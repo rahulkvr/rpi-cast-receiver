@@ -63,7 +63,8 @@ if [[ "$ARCH" == arm* || "$ARCH" == aarch* ]]; then
       rm -rf "$GN_SRC"
     fi
     if [[ ! -d "$GN_SRC" ]]; then
-      git clone --depth 1 https://gn.googlesource.com/gn "$GN_SRC"
+      # Full clone: gen.py runs 'git describe HEAD --match initial-commit'; shallow clone has no tags and fails
+      git clone https://gn.googlesource.com/gn "$GN_SRC"
     fi
     cd "$GN_SRC"
     python3 build/gen.py

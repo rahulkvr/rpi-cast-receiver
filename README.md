@@ -20,22 +20,30 @@ See [RESEARCH.md](RESEARCH.md) for constraints (Google does not allow building a
 
 ## Quick start (on the Pi)
 
+**Prerequisites:**
+- Raspberry Pi 4 (or similar) running **Raspberry Pi OS** or another Debian-based Linux.
+- **Internet access** on the Pi.
+- A speaker connected via aux (3.5 mm).
+- Your Pi and phone/laptop must be on the same network (e.g. same Wi‑Fi).
+
 ### 1. Clone this repo on the Pi
 
 ```bash
 cd ~
-git clone <this-repo-url> rpi-cast-receiver
+git clone https://github.com/rahulkvr/rpi-cast-receiver.git rpi-cast-receiver
 cd rpi-cast-receiver
 ```
 
-### 2. Build the Cast receiver (one-time; 15–30+ min on Pi 4)
+### 2. Build the Cast receiver (one-time; 20–45+ min on Pi 4)
 
 ```bash
 chmod +x scripts/*.sh
 ./scripts/build-openscreen-receiver.sh
 ```
 
-If the Pi runs out of memory, build on a more powerful Linux machine (same script), then copy `openscreen_build/openscreen/out/Default/cast_receiver` to the Pi and set `CAST_RECEIVER_BIN` when running.
+- The script needs **internet** (to fetch Open Screen and, on ARM, to clone and build gn).
+- On **ARM (Raspberry Pi)** the first run also builds gn from source, so it can take longer than on x86.
+- If the Pi runs out of memory, build on a more powerful Linux machine (same script), then copy `openscreen_build/openscreen/out/Default/cast_receiver` to the Pi and set `CAST_RECEIVER_BIN` when running.
 
 ### 3. Set audio output to aux
 
@@ -57,11 +65,11 @@ First run generates TLS credentials and exits. Run again to start:
 ./scripts/run-receiver.sh
 ```
 
-Use a specific interface if needed:
+Use the interface your Pi uses for the network (required for discovery):
 
 ```bash
-./scripts/run-receiver.sh wlan0   # Wi-Fi
-./scripts/run-receiver.sh eth0    # Ethernet
+./scripts/run-receiver.sh wlan0   # Pi on Wi-Fi (typical)
+./scripts/run-receiver.sh eth0    # Pi on Ethernet
 ```
 
 ### 5. Cast from your phone/laptop
@@ -94,9 +102,10 @@ Check status: `sudo systemctl status cast-receiver`
 
 ## Troubleshooting
 
-- **Not in Cast list**: Same Wi‑Fi as the Pi? Receiver running? Firewall: allow the port the receiver uses (Open Screen may use 8010; Chromecast uses 8009).
+- **Not in Cast list**: Same Wi‑Fi as the Pi? Receiver running? Try `./scripts/run-receiver.sh wlan0` if the Pi is on Wi-Fi. Firewall: allow the port the receiver uses (Open Screen may use 8010; Chromecast uses 8009).
 - **No sound**: Run `./scripts/setup-audio.sh` and `raspi-config` → Audio → Headphones; test with `aplay`.
 - **Build fails on Pi**: Try building on a PC and copying the `cast_receiver` binary; or increase swap.
+- **gn build fails (e.g. "fatal: No names found" / git describe)**: Remove the gn source and re-run the build so the script does a fresh full clone: `rm -rf ~/openscreen_build/gn_src` then `./scripts/build-openscreen-receiver.sh`. (That path is the default; if you set `CAST_RECEIVER_BUILD_DIR`, use `$CAST_RECEIVER_BUILD_DIR/gn_src` instead.)
 
 ## Files
 
