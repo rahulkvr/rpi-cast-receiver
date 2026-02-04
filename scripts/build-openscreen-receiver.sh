@@ -67,7 +67,7 @@ if [[ "$ARCH" == arm* || "$ARCH" == aarch* ]]; then
       git clone https://gn.googlesource.com/gn "$GN_SRC"
     fi
     # Ensure tags are available for git describe (shallow clones may not have tags).
-    if ! git -C "$GN_SRC" describe HEAD --abbrev=12 --match initial-commit &>/dev/null; then
+    if ! git -C "$GN_SRC" describe HEAD --match initial-commit &>/dev/null; then
       # --unshallow on a non-shallow repo is a no-op; fallback to deep fetch if unsupported.
       git -C "$GN_SRC" fetch --unshallow --tags || git -C "$GN_SRC" fetch --depth=10000 --tags || echo "Warning: Failed to fetch tags for gn. The build may fail." >&2
     fi
