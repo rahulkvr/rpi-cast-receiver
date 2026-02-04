@@ -72,6 +72,14 @@ Use the interface your Pi uses for the network (required for discovery):
 ./scripts/run-receiver.sh eth0    # Pi on Ethernet
 ```
 
+### 4b. Validate the local setup (optional)
+
+```bash
+./scripts/validate-setup.sh wlan0   # or eth0
+```
+
+This checks interface presence, local audio, cast mDNS advertisement, and whether the receiver is listening on port 8010.
+
 ### 5. Cast from your phone/laptop
 
 - Connect phone/tablet/laptop to the **same Wi‑Fi** as the Pi.
