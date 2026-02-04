@@ -44,7 +44,7 @@ sudo apt-get install -y \
 ARCH=$(uname -m)
 GN_BINARY="$OPENSCREEN_DIR/buildtools/linux64/gn"
 NINJA_CMD="ninja"
-if [[ "$ARCH" == "aarch64" || "$ARCH" == "armv7l" ]]; then
+if [[ "$ARCH" == arm* || "$ARCH" == aarch* ]]; then
   NINJA_CMD="/usr/bin/ninja"
   # Build native gn if: gn missing/not runnable, or existing gn is x86_64 (e.g. runs via QEMU, slowly)
   NEED_BUILD_GN=false
