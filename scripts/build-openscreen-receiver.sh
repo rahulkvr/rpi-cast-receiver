@@ -32,7 +32,7 @@ cd "$OPENSCREEN_DIR"
 echo "Installing build dependencies..."
 sudo apt-get update
 sudo apt-get install -y \
-  git python3 curl \
+  git python3 curl ninja-build build-essential \
   libsdl2-dev libavcodec-dev libavformat-dev libavutil-dev libswresample-dev \
   libopus-dev libvpx-dev pkg-config
 
@@ -40,14 +40,53 @@ sudo apt-get install -y \
 #   libavcodec-dev libavformat-dev libavutil-dev libswresample-dev
 # On older Raspberry Pi OS you might need: libavcodec58-dev, etc.
 
-# --- 4. GN args for cast_receiver with audio/video playback ---
+# --- 4. On ARM (Raspberry Pi): build native gn; fetch provides x86_64 only ---
+ARCH=$(uname -m)
+GN_BINARY="$OPENSCREEN_DIR/buildtools/linux64/gn"
+NINJA_CMD="ninja"
+if [[ "$ARCH" == arm* || "$ARCH" == aarch* ]]; then
+  NINJA_CMD="/usr/bin/ninja"
+  # Build native gn if: gn missing/not runnable, or existing gn is x86_64 (e.g. runs via QEMU, slowly)
+  NEED_BUILD_GN=false
+  if [[ ! -x "$GN_BINARY" ]] || ! "$GN_BINARY" --version &>/dev/null; then
+    NEED_BUILD_GN=true
+  elif command -v file &>/dev/null; then
+    if GN_DESC=$(file "$GN_BINARY" 2>/dev/null) && echo "$GN_DESC" | grep -qiE 'x86-64|x86_64'; then
+      NEED_BUILD_GN=true
+    fi
+  fi
+  if [[ "$NEED_BUILD_GN" == true ]]; then
+    echo "Building gn for $ARCH (Open Screen only ships x86_64 buildtools)..."
+    GN_SRC="$BUILD_DIR/gn_src"
+    # Re-clone if existing dir is not a valid git repo (e.g. interrupted clone)
+    if [[ -d "$GN_SRC" ]] && ! git -C "$GN_SRC" rev-parse HEAD &>/dev/null; then
+      rm -rf "$GN_SRC"
+    fi
+    if [[ ! -d "$GN_SRC" ]]; then
+      git clone --depth 1 https://gn.googlesource.com/gn "$GN_SRC"
+    fi
+    cd "$GN_SRC"
+    python3 build/gen.py
+    $NINJA_CMD -C out
+    mkdir -p "$(dirname "$GN_BINARY")"
+    cp -f out/gn "$GN_BINARY"
+    if ! "$GN_BINARY" --version &>/dev/null; then
+      echo "Failed to build working gn binary"
+      exit 1
+    fi
+    cd "$OPENSCREEN_DIR"
+    echo "gn built and installed for ARM."
+  fi
+fi
+
+# --- 5. GN args for cast_receiver with audio/video playback ---
 # use_sysroot=false so we use system libs; required on many Linux distros.
 OUT_DIR="out/Default"
-gn gen "$OUT_DIR" --args='is_debug=false use_sysroot=false have_ffmpeg=true have_libsdl2=true have_libopus=true have_libvpx=true'
+"$GN_BINARY" gen "$OUT_DIR" --args='is_debug=false use_sysroot=false have_ffmpeg=true have_libsdl2=true have_libopus=true have_libvpx=true'
 
-# --- 5. Build ---
+# --- 6. Build ---
 echo "Building cast_receiver (this can take 15–30+ minutes on a Pi 4)..."
-ninja -C "$OUT_DIR" cast_receiver
+"$NINJA_CMD" -C "$OUT_DIR" cast_receiver
 
 echo "Done. Binary: $OPENSCREEN_DIR/$OUT_DIR/cast_receiver"
 echo "Generate credentials and run with: scripts/run-receiver.sh"
