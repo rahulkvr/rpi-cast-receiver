@@ -43,6 +43,9 @@ chmod +x scripts/*.sh
 
 - The script needs **internet** (to fetch Open Screen and, on ARM, to clone and build gn).
 - On **ARM (Raspberry Pi)** the first run also builds gn from source, so it can take longer than on x86.
+- On small Pi boards, the build can hang if too many compile jobs run at once. The script now defaults to **1–2 jobs** on ARM. You can override with `NINJA_JOBS`:
+  - `NINJA_JOBS=1 ./scripts/build-openscreen-receiver.sh`
+  - `NINJA_JOBS=2 ./scripts/build-openscreen-receiver.sh`
 - If the Pi runs out of memory, build on a more powerful Linux machine (same script), then copy `openscreen_build/openscreen/out/Default/cast_receiver` to the Pi and set `CAST_RECEIVER_BIN` when running.
 
 ### 3. Set audio output to aux

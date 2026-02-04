@@ -43,9 +43,19 @@ sudo apt-get install -y \
 # --- 4. On ARM (Raspberry Pi): build native gn; fetch provides x86_64 only ---
 ARCH=$(uname -m)
 GN_BINARY="$OPENSCREEN_DIR/buildtools/linux64/gn"
-NINJA_CMD="ninja"
+NINJA_BIN="ninja"
+NINJA_JOBS="${NINJA_JOBS:-}"
 if [[ "$ARCH" == arm* || "$ARCH" == aarch* ]]; then
-  NINJA_CMD="/usr/bin/ninja"
+  NINJA_BIN="/usr/bin/ninja"
+  # Default to low parallelism on small ARM boards to avoid hangs/OOM.
+  if [[ -z "$NINJA_JOBS" ]]; then
+    MEM_MB=$(awk '/MemTotal/ {print int($2/1024)}' /proc/meminfo)
+    if [[ "$MEM_MB" -lt 3000 ]]; then
+      NINJA_JOBS=1
+    else
+      NINJA_JOBS=2
+    fi
+  fi
   # Build native gn if: gn missing/not runnable, or existing gn is x86_64 (e.g. runs via QEMU, slowly)
   NEED_BUILD_GN=false
   if [[ ! -x "$GN_BINARY" ]] || ! "$GN_BINARY" --version &>/dev/null; then
@@ -84,7 +94,11 @@ if [[ "$ARCH" == arm* || "$ARCH" == aarch* ]]; then
     export CXX="${CXX:-g++}"
     export AR="${AR:-ar}"
     python3 build/gen.py
-    $NINJA_CMD -C out
+    if [[ -n "$NINJA_JOBS" ]]; then
+      "$NINJA_BIN" -j"$NINJA_JOBS" -l"$NINJA_JOBS" -C out
+    else
+      "$NINJA_BIN" -C out
+    fi
     mkdir -p "$(dirname "$GN_BINARY")"
     cp -f out/gn "$GN_BINARY"
     if ! "$GN_BINARY" --version &>/dev/null; then
@@ -99,7 +113,7 @@ fi
 # --- 5. GN args for cast_receiver with audio/video playback ---
 # use_sysroot=false so we use system libs; required on many Linux distros.
 OUT_DIR="out/Default"
-GN_ARGS='is_debug=false use_sysroot=false have_ffmpeg=true have_libsdl2=true have_libopus=true have_libvpx=true'
+GN_ARGS='is_debug=false use_sysroot=false symbol_level=0 have_ffmpeg=true have_libsdl2=true have_libopus=true have_libvpx=true'
 # On ARM, prefer GCC over the bundled x86_64 clang toolchain.
 if [[ "$ARCH" == arm* || "$ARCH" == aarch* ]]; then
   GN_ARGS="$GN_ARGS is_clang=false use_custom_libcxx=false"
@@ -111,7 +125,11 @@ fi
 
 # --- 6. Build ---
 echo "Building cast_receiver (this can take 15–30+ minutes on a Pi 4)..."
-"$NINJA_CMD" -C "$OUT_DIR" cast_receiver
+if [[ -n "$NINJA_JOBS" ]]; then
+  "$NINJA_BIN" -j"$NINJA_JOBS" -l"$NINJA_JOBS" -C "$OUT_DIR" cast_receiver
+else
+  "$NINJA_BIN" -C "$OUT_DIR" cast_receiver
+fi
 
 echo "Done. Binary: $OPENSCREEN_DIR/$OUT_DIR/cast_receiver"
 echo "Generate credentials and run with: scripts/run-receiver.sh"
