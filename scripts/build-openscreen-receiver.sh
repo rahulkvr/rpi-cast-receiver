@@ -56,9 +56,14 @@ if [[ "$ARCH" == "aarch64" || "$ARCH" == "armv7l" ]]; then
     fi
     cd "$GN_SRC"
     python3 build/gen.py
-    ninja -C out
+    # Use system ninja (depot_tools may provide x86_64 ninja, which fails on ARM)
+    /usr/bin/ninja -C out
     mkdir -p "$(dirname "$GN_BINARY")"
     cp -f out/gn "$GN_BINARY"
+    if ! "$GN_BINARY" --version &>/dev/null; then
+      echo "Failed to build working gn binary"
+      exit 1
+    fi
     cd "$OPENSCREEN_DIR"
     echo "gn built and installed for ARM."
   fi
