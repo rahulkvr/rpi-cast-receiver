@@ -79,6 +79,10 @@ if [[ "$ARCH" == arm* || "$ARCH" == aarch* ]]; then
       fi
     fi
     cd "$GN_SRC"
+    # Use system gcc/g++ if clang++ is not installed (default in gn build).
+    export CC="${CC:-gcc}"
+    export CXX="${CXX:-g++}"
+    export AR="${AR:-ar}"
     python3 build/gen.py
     $NINJA_CMD -C out
     mkdir -p "$(dirname "$GN_BINARY")"
