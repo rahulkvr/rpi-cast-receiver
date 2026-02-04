@@ -51,8 +51,7 @@ if [[ "$ARCH" == arm* || "$ARCH" == aarch* ]]; then
   if [[ ! -x "$GN_BINARY" ]] || ! "$GN_BINARY" --version &>/dev/null; then
     NEED_BUILD_GN=true
   elif command -v file &>/dev/null; then
-    GN_DESC=$(file "$GN_BINARY" 2>/dev/null || true)
-    if echo "$GN_DESC" | grep -qiE 'x86-64|x86_64'; then
+    if GN_DESC=$(file "$GN_BINARY" 2>/dev/null) && echo "$GN_DESC" | grep -qiE 'x86-64|x86_64'; then
       NEED_BUILD_GN=true
     fi
   fi
