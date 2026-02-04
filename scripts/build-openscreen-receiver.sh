@@ -43,8 +43,20 @@ sudo apt-get install -y \
 # --- 4. On ARM (Raspberry Pi): build native gn; fetch provides x86_64 only ---
 ARCH=$(uname -m)
 GN_BINARY="$OPENSCREEN_DIR/buildtools/linux64/gn"
+NINJA_CMD="ninja"
 if [[ "$ARCH" == "aarch64" || "$ARCH" == "armv7l" ]]; then
-  if ! "$GN_BINARY" --version &>/dev/null; then
+  NINJA_CMD="/usr/bin/ninja"
+  # Build native gn if: gn missing/not runnable, or existing gn is x86_64 (e.g. runs via QEMU, slowly)
+  NEED_BUILD_GN=false
+  if [[ ! -x "$GN_BINARY" ]] || ! "$GN_BINARY" --version &>/dev/null; then
+    NEED_BUILD_GN=true
+  elif command -v file &>/dev/null; then
+    GN_DESC=$(file "$GN_BINARY" 2>/dev/null || true)
+    if echo "$GN_DESC" | grep -qiE 'x86-64|x86_64'; then
+      NEED_BUILD_GN=true
+    fi
+  fi
+  if [[ "$NEED_BUILD_GN" == true ]]; then
     echo "Building gn for $ARCH (Open Screen only ships x86_64 buildtools)..."
     GN_SRC="$BUILD_DIR/gn_src"
     # Re-clone if existing dir is not a valid git repo (e.g. interrupted clone)
@@ -56,8 +68,7 @@ if [[ "$ARCH" == "aarch64" || "$ARCH" == "armv7l" ]]; then
     fi
     cd "$GN_SRC"
     python3 build/gen.py
-    # Use system ninja (depot_tools may provide x86_64 ninja, which fails on ARM)
-    /usr/bin/ninja -C out
+    $NINJA_CMD -C out
     mkdir -p "$(dirname "$GN_BINARY")"
     cp -f out/gn "$GN_BINARY"
     if ! "$GN_BINARY" --version &>/dev/null; then
@@ -67,8 +78,6 @@ if [[ "$ARCH" == "aarch64" || "$ARCH" == "armv7l" ]]; then
     cd "$OPENSCREEN_DIR"
     echo "gn built and installed for ARM."
   fi
-  # Use system ninja on ARM (depot_tools may provide x86_64 ninja)
-  export PATH="/usr/bin:$PATH"
 fi
 
 # --- 5. GN args for cast_receiver with audio/video playback ---
@@ -78,7 +87,7 @@ OUT_DIR="out/Default"
 
 # --- 6. Build ---
 echo "Building cast_receiver (this can take 15–30+ minutes on a Pi 4)..."
-ninja -C "$OUT_DIR" cast_receiver
+"$NINJA_CMD" -C "$OUT_DIR" cast_receiver
 
 echo "Done. Binary: $OPENSCREEN_DIR/$OUT_DIR/cast_receiver"
 echo "Generate credentials and run with: scripts/run-receiver.sh"
