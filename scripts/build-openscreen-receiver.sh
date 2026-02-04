@@ -66,10 +66,17 @@ if [[ "$ARCH" == arm* || "$ARCH" == aarch* ]]; then
       # Full clone: gen.py runs 'git describe HEAD --match initial-commit'; shallow clone has no tags and fails
       git clone https://gn.googlesource.com/gn "$GN_SRC"
     fi
-    # Ensure tags are available for git describe (shallow clones may not have tags).
-    if ! git -C "$GN_SRC" describe HEAD --match initial-commit &>/dev/null; then
+    # Ensure history and tags are available for git describe (shallow clones can break this).
+    if ! git -C "$GN_SRC" describe HEAD --abbrev=12 --match initial-commit &>/dev/null; then
+      echo "git describe failed; fetching full history/tags for gn_src..."
       # --unshallow on a non-shallow repo is a no-op; fallback to deep fetch if unsupported.
-      git -C "$GN_SRC" fetch --unshallow --tags || git -C "$GN_SRC" fetch --depth=10000 --tags || echo "Warning: Failed to fetch tags for gn. The build may fail." >&2
+      git -C "$GN_SRC" fetch --unshallow --tags --prune || \
+        git -C "$GN_SRC" fetch --depth=100000 --tags --prune || \
+        echo "Warning: Failed to fetch full history/tags for gn. The build may fail." >&2
+      if ! git -C "$GN_SRC" describe HEAD --abbrev=12 --match initial-commit &>/dev/null; then
+        echo "Error: git describe still failing. Remove '$GN_SRC' and rerun the build." >&2
+        exit 1
+      fi
     fi
     cd "$GN_SRC"
     python3 build/gen.py
