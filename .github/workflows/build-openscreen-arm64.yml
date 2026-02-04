@@ -1,0 +1,30 @@
+name: Build Open Screen (ARM64)
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - "scripts/build-openscreen-receiver.sh"
+      - ".github/workflows/build-openscreen-arm64.yml"
+
+jobs:
+  build-arm64:
+    runs-on: ubuntu-24.04-arm64
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Build cast_receiver (ARM64)
+        shell: bash
+        env:
+          CAST_RECEIVER_BUILD_DIR: ${{ github.workspace }}/build
+          NINJA_JOBS: 2
+        run: |
+          chmod +x scripts/*.sh
+          ./scripts/build-openscreen-receiver.sh
+
+      - name: Upload cast_receiver artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: cast_receiver-arm64
+          path: ${{ github.workspace }}/build/openscreen/out/Default/cast_receiver

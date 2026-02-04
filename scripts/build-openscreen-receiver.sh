@@ -43,9 +43,19 @@ sudo apt-get install -y \
 # --- 4. On ARM (Raspberry Pi): build native gn; fetch provides x86_64 only ---
 ARCH=$(uname -m)
 GN_BINARY="$OPENSCREEN_DIR/buildtools/linux64/gn"
-NINJA_CMD="ninja"
+NINJA_BIN="ninja"
+NINJA_JOBS="${NINJA_JOBS:-}"
 if [[ "$ARCH" == arm* || "$ARCH" == aarch* ]]; then
-  NINJA_CMD="/usr/bin/ninja"
+  NINJA_BIN="/usr/bin/ninja"
+  # Default to low parallelism on small ARM boards to avoid hangs/OOM.
+  if [[ -z "$NINJA_JOBS" ]]; then
+    MEM_MB=$(awk '/MemTotal/ {print int($2/1024)}' /proc/meminfo)
+    if [[ "$MEM_MB" -lt 3000 ]]; then
+      NINJA_JOBS=1
+    else
+      NINJA_JOBS=2
+    fi
+  fi
   # Build native gn if: gn missing/not runnable, or existing gn is x86_64 (e.g. runs via QEMU, slowly)
   NEED_BUILD_GN=false
   if [[ ! -x "$GN_BINARY" ]] || ! "$GN_BINARY" --version &>/dev/null; then
@@ -66,9 +76,29 @@ if [[ "$ARCH" == arm* || "$ARCH" == aarch* ]]; then
       # Full clone: gen.py runs 'git describe HEAD --match initial-commit'; shallow clone has no tags and fails
       git clone https://gn.googlesource.com/gn "$GN_SRC"
     fi
+    # Ensure history and tags are available for git describe (shallow clones can break this).
+    if ! git -C "$GN_SRC" describe HEAD --abbrev=12 --match initial-commit &>/dev/null; then
+      echo "git describe failed; fetching full history/tags for gn_src..."
+      # --unshallow on a non-shallow repo is a no-op; fallback to deep fetch if unsupported.
+      git -C "$GN_SRC" fetch --unshallow --tags --prune || \
+        git -C "$GN_SRC" fetch --depth=100000 --tags --prune || \
+        echo "Warning: Failed to fetch full history/tags for gn. The build may fail." >&2
+      if ! git -C "$GN_SRC" describe HEAD --abbrev=12 --match initial-commit &>/dev/null; then
+        echo "Error: git describe still failing. Remove '$GN_SRC' and rerun the build." >&2
+        exit 1
+      fi
+    fi
     cd "$GN_SRC"
+    # Use system gcc/g++ if clang++ is not installed (default in gn build).
+    export CC="${CC:-gcc}"
+    export CXX="${CXX:-g++}"
+    export AR="${AR:-ar}"
     python3 build/gen.py
-    $NINJA_CMD -C out
+    if [[ -n "$NINJA_JOBS" ]]; then
+      "$NINJA_BIN" -j"$NINJA_JOBS" -l"$NINJA_JOBS" -C out
+    else
+      "$NINJA_BIN" -C out
+    fi
     mkdir -p "$(dirname "$GN_BINARY")"
     cp -f out/gn "$GN_BINARY"
     if ! "$GN_BINARY" --version &>/dev/null; then
@@ -83,11 +113,24 @@ fi
 # --- 5. GN args for cast_receiver with audio/video playback ---
 # use_sysroot=false so we use system libs; required on many Linux distros.
 OUT_DIR="out/Default"
-"$GN_BINARY" gen "$OUT_DIR" --args='is_debug=false use_sysroot=false have_ffmpeg=true have_libsdl2=true have_libopus=true have_libvpx=true'
+GN_ARGS='is_debug=false use_sysroot=false symbol_level=0 have_ffmpeg=true have_libsdl2=true have_libopus=true have_libvpx=true'
+# On ARM, prefer GCC over the bundled x86_64 clang toolchain.
+if [[ "$ARCH" == arm* || "$ARCH" == aarch* ]]; then
+  GN_ARGS="$GN_ARGS is_clang=false use_custom_libcxx=false"
+  GN_ARGS="$GN_ARGS treat_warnings_as_errors=false extra_cflags=[\\\"-Wno-error=ignored-attributes\\\"]"
+  export CC="${CC:-gcc}"
+  export CXX="${CXX:-g++}"
+  export AR="${AR:-ar}"
+fi
+"$GN_BINARY" gen "$OUT_DIR" --args="$GN_ARGS"
 
 # --- 6. Build ---
 echo "Building cast_receiver (this can take 15–30+ minutes on a Pi 4)..."
-"$NINJA_CMD" -C "$OUT_DIR" cast_receiver
+if [[ -n "$NINJA_JOBS" ]]; then
+  "$NINJA_BIN" -j"$NINJA_JOBS" -l"$NINJA_JOBS" -C "$OUT_DIR" cast_receiver
+else
+  "$NINJA_BIN" -C "$OUT_DIR" cast_receiver
+fi
 
 echo "Done. Binary: $OPENSCREEN_DIR/$OUT_DIR/cast_receiver"
 echo "Generate credentials and run with: scripts/run-receiver.sh"

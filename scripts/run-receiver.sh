@@ -16,6 +16,14 @@ FRIENDLY_NAME="${CAST_RECEIVER_FRIENDLY_NAME:-RPi Speaker}"
 # Network interface: first arg, or env, or default eth0
 INTERFACE="${1:-${CAST_RECEIVER_INTERFACE:-eth0}}"
 
+# Validate interface exists
+if ! ip link show "$INTERFACE" &>/dev/null; then
+  echo "Network interface '$INTERFACE' not found."
+  echo "Available interfaces:"
+  ip -o link show | awk -F': ' '{print "  - " $2}'
+  exit 1
+fi
+
 if [[ ! -x "$BIN" ]]; then
   echo "Cast receiver binary not found: $BIN"
   echo "Build first with: ./scripts/build-openscreen-receiver.sh"
