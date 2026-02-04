@@ -47,25 +47,29 @@ if [[ "$ARCH" == "aarch64" || "$ARCH" == "armv7l" ]]; then
   if ! "$GN_BINARY" --version &>/dev/null; then
     echo "Building gn for $ARCH (Open Screen only ships x86_64 buildtools)..."
     GN_SRC="$BUILD_DIR/gn_src"
+    # Re-clone if existing dir is not a valid git repo (e.g. interrupted clone)
+    if [[ -d "$GN_SRC" ]] && ! git -C "$GN_SRC" rev-parse HEAD &>/dev/null; then
+      rm -rf "$GN_SRC"
+    fi
     if [[ ! -d "$GN_SRC" ]]; then
-      git clone https://gn.googlesource.com/gn "$GN_SRC"
+      git clone --depth 1 https://gn.googlesource.com/gn "$GN_SRC"
     fi
     cd "$GN_SRC"
     python3 build/gen.py
     ninja -C out
+    mkdir -p "$(dirname "$GN_BINARY")"
     cp -f out/gn "$GN_BINARY"
     cd "$OPENSCREEN_DIR"
     echo "gn built and installed for ARM."
   fi
+  # Use system ninja on ARM (depot_tools may provide x86_64 ninja)
+  export PATH="/usr/bin:$PATH"
 fi
-
-# Use system ninja on ARM (depot_tools may provide x86_64 ninja)
-export PATH="/usr/bin:$PATH"
 
 # --- 5. GN args for cast_receiver with audio/video playback ---
 # use_sysroot=false so we use system libs; required on many Linux distros.
 OUT_DIR="out/Default"
-gn gen "$OUT_DIR" --args='is_debug=false use_sysroot=false have_ffmpeg=true have_libsdl2=true have_libopus=true have_libvpx=true'
+"$GN_BINARY" gen "$OUT_DIR" --args='is_debug=false use_sysroot=false have_ffmpeg=true have_libsdl2=true have_libopus=true have_libvpx=true'
 
 # --- 6. Build ---
 echo "Building cast_receiver (this can take 15–30+ minutes on a Pi 4)..."
