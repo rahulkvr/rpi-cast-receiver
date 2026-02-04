@@ -20,7 +20,11 @@ See [RESEARCH.md](RESEARCH.md) for constraints (Google does not allow building a
 
 ## Quick start (on the Pi)
 
-**Prerequisites:** Raspberry Pi 4 (or similar) running **Raspberry Pi OS** or another Debian-based Linux, with **internet access** and the speaker connected via aux (3.5 mm). Pi and phone/laptop must be on the same network (e.g. same Wi‑Fi).
+**Prerequisites:**
+- Raspberry Pi 4 (or similar) running **Raspberry Pi OS** or another Debian-based Linux.
+- **Internet access** on the Pi.
+- A speaker connected via aux (3.5 mm).
+- Your Pi and phone/laptop must be on the same network (e.g. same Wi‑Fi).
 
 ### 1. Clone this repo on the Pi
 
