@@ -105,7 +105,7 @@ Check status: `sudo systemctl status cast-receiver`
 - **Not in Cast list**: Same Wi‑Fi as the Pi? Receiver running? Try `./scripts/run-receiver.sh wlan0` if the Pi is on Wi-Fi. Firewall: allow the port the receiver uses (Open Screen may use 8010; Chromecast uses 8009).
 - **No sound**: Run `./scripts/setup-audio.sh` and `raspi-config` → Audio → Headphones; test with `aplay`.
 - **Build fails on Pi**: Try building on a PC and copying the `cast_receiver` binary; or increase swap.
-- **gn build fails (e.g. "fatal: No names found" / git describe)**: Remove the gn source and re-run the build so the script does a fresh full clone: `rm -rf ~/openscreen_build/gn_src` then `./scripts/build-openscreen-receiver.sh`.
+- **gn build fails (e.g. "fatal: No names found" / git describe)**: Remove the gn source and re-run the build so the script does a fresh full clone: `rm -rf ~/openscreen_build/gn_src` then `./scripts/build-openscreen-receiver.sh`. (That path is the default; if you set `CAST_RECEIVER_BUILD_DIR`, replace `~/openscreen_build` with `$CAST_RECEIVER_BUILD_DIR`.)
 
 ## Files
 
