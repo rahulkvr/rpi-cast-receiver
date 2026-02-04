@@ -1,0 +1,23 @@
+---
+description: Always search online for recent library updates, versions, and features before implementing code.
+alwaysApply: true
+---
+
+# Online library & framework updates
+
+- **When using external libraries or frameworks**, always perform a quick web search (prefer official docs, release notes, or README) to:
+  - Confirm the **latest stable version** and any **breaking changes**.
+  - Check for **new or preferred APIs** that may replace older patterns.
+  - Verify **usage examples** that match the target language and environment.
+
+- **Before writing or updating code that depends on a library**:
+  - Look up the library’s **current documentation** for the specific feature or API.
+  - Prefer solutions that align with **current best practices** shown in recent docs.
+
+- **If the project already pins dependency versions** (e.g., in `package.json`, `requirements.txt`, or lockfiles):
+  - Still consult the **latest docs**, but ensure final code remains **compatible with the pinned version**.
+
+- **If conflicting information appears between local code and online docs**:
+  - Explain the difference (e.g., “v2 vs v3 API”) and choose the approach that:
+    - Respects the project’s existing version constraints, and
+    - Moves toward **modern, supported APIs** when feasible.

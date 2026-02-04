@@ -1,0 +1,27 @@
+# Systemd unit for Open Screen cast_receiver (RPi speaker in Cast picker).
+# Install:
+#   sudo cp systemd/cast-receiver.service /etc/systemd/system/
+#   sudo systemctl daemon-reload
+#   sudo systemctl enable --now cast-receiver
+# Override paths with: sudo systemctl edit cast-receiver (add [Service] Environment=...)
+
+[Unit]
+Description=Open Screen Cast Receiver (RPi Speaker)
+After=network-online.target sound.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=pi
+Group=pi
+# Default paths; override with Environment= in a drop-in
+Environment=CAST_RECEIVER_BUILD_DIR=/home/pi/openscreen_build
+Environment=CAST_RECEIVER_INTERFACE=wlan0
+Environment=CAST_RECEIVER_FRIENDLY_NAME=RPi Speaker
+Environment=CAST_RECEIVER_CREDS_DIR=/home/pi/.cast_receiver
+ExecStart=/home/pi/openscreen_build/openscreen/out/Default/cast_receiver -p /home/pi/.cast_receiver/generated_root_cast_receiver.key -d /home/pi/.cast_receiver/generated_root_cast_receiver.crt -f "RPi Speaker" wlan0
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target
