@@ -66,6 +66,15 @@ if [[ "$ARCH" == arm* || "$ARCH" == aarch* ]]; then
       # Full clone: gen.py runs 'git describe HEAD --match initial-commit'; shallow clone has no tags and fails
       git clone https://gn.googlesource.com/gn "$GN_SRC"
     fi
+    # If gn_src already existed (or was shallow), make sure tags are available for git describe
+    if git -C "$GN_SRC" rev-parse --is-shallow-repository 2>/dev/null | grep -q true; then
+      git -C "$GN_SRC" fetch --unshallow --tags || git -C "$GN_SRC" fetch --depth=10000 --tags
+    else
+      git -C "$GN_SRC" fetch --tags --prune
+    fi
+    if ! git -C "$GN_SRC" describe HEAD --abbrev=12 --match initial-commit &>/dev/null; then
+      git -C "$GN_SRC" fetch --tags --unshallow || true
+    fi
     cd "$GN_SRC"
     python3 build/gen.py
     $NINJA_CMD -C out
