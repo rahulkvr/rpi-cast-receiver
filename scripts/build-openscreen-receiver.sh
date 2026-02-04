@@ -32,7 +32,7 @@ cd "$OPENSCREEN_DIR"
 echo "Installing build dependencies..."
 sudo apt-get update
 sudo apt-get install -y \
-  git python3 curl \
+  git python3 curl ninja-build build-essential \
   libsdl2-dev libavcodec-dev libavformat-dev libavutil-dev libswresample-dev \
   libopus-dev libvpx-dev pkg-config
 
@@ -40,12 +40,34 @@ sudo apt-get install -y \
 #   libavcodec-dev libavformat-dev libavutil-dev libswresample-dev
 # On older Raspberry Pi OS you might need: libavcodec58-dev, etc.
 
-# --- 4. GN args for cast_receiver with audio/video playback ---
+# --- 4. On ARM (Raspberry Pi): build native gn; fetch provides x86_64 only ---
+ARCH=$(uname -m)
+GN_BINARY="$OPENSCREEN_DIR/buildtools/linux64/gn"
+if [[ "$ARCH" == "aarch64" || "$ARCH" == "armv7l" ]]; then
+  if ! "$GN_BINARY" --version &>/dev/null; then
+    echo "Building gn for $ARCH (Open Screen only ships x86_64 buildtools)..."
+    GN_SRC="$BUILD_DIR/gn_src"
+    if [[ ! -d "$GN_SRC" ]]; then
+      git clone https://gn.googlesource.com/gn "$GN_SRC"
+    fi
+    cd "$GN_SRC"
+    python3 build/gen.py
+    ninja -C out
+    cp -f out/gn "$GN_BINARY"
+    cd "$OPENSCREEN_DIR"
+    echo "gn built and installed for ARM."
+  fi
+fi
+
+# Use system ninja on ARM (depot_tools may provide x86_64 ninja)
+export PATH="/usr/bin:$PATH"
+
+# --- 5. GN args for cast_receiver with audio/video playback ---
 # use_sysroot=false so we use system libs; required on many Linux distros.
 OUT_DIR="out/Default"
 gn gen "$OUT_DIR" --args='is_debug=false use_sysroot=false have_ffmpeg=true have_libsdl2=true have_libopus=true have_libvpx=true'
 
-# --- 5. Build ---
+# --- 6. Build ---
 echo "Building cast_receiver (this can take 15–30+ minutes on a Pi 4)..."
 ninja -C "$OUT_DIR" cast_receiver
 
