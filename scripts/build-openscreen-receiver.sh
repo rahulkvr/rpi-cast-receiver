@@ -117,6 +117,7 @@ GN_ARGS='is_debug=false use_sysroot=false symbol_level=0 have_ffmpeg=true have_l
 # On ARM, prefer GCC over the bundled x86_64 clang toolchain.
 if [[ "$ARCH" == arm* || "$ARCH" == aarch* ]]; then
   GN_ARGS="$GN_ARGS is_clang=false use_custom_libcxx=false"
+  GN_ARGS="$GN_ARGS treat_warnings_as_errors=false extra_cflags=[\\\"-Wno-error=ignored-attributes\\\"]"
   export CC="${CC:-gcc}"
   export CXX="${CXX:-g++}"
   export AR="${AR:-ar}"
