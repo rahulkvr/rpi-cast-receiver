@@ -99,7 +99,15 @@ fi
 # --- 5. GN args for cast_receiver with audio/video playback ---
 # use_sysroot=false so we use system libs; required on many Linux distros.
 OUT_DIR="out/Default"
-"$GN_BINARY" gen "$OUT_DIR" --args='is_debug=false use_sysroot=false have_ffmpeg=true have_libsdl2=true have_libopus=true have_libvpx=true'
+GN_ARGS='is_debug=false use_sysroot=false have_ffmpeg=true have_libsdl2=true have_libopus=true have_libvpx=true'
+# On ARM, prefer GCC over the bundled x86_64 clang toolchain.
+if [[ "$ARCH" == arm* || "$ARCH" == aarch* ]]; then
+  GN_ARGS="$GN_ARGS is_clang=false use_custom_libcxx=false"
+  export CC="${CC:-gcc}"
+  export CXX="${CXX:-g++}"
+  export AR="${AR:-ar}"
+fi
+"$GN_BINARY" gen "$OUT_DIR" --args="$GN_ARGS"
 
 # --- 6. Build ---
 echo "Building cast_receiver (this can take 15–30+ minutes on a Pi 4)..."
